@@ -243,11 +243,11 @@ enum locking_mechanism { buttonPressed, buttonNotPressed};
 int lockingSMFct(int state)
 {
 
-	unsigned char pin7 = ~PINA & 0x01; //grabs PA0 (button inside house)
+	unsigned char pin7 = ~PINB & 0x80; //grabs PA0 (button inside house)
 	switch(state)
 	{
 		case(buttonPressed):
-			if(pin7 == 0x01)
+			if(pin7 == 0x80)
 			{
 				state = buttonPressed;
 			}
@@ -257,7 +257,7 @@ int lockingSMFct(int state)
 			}
 			break;
 		case(buttonNotPressed):
-			if(pin7 == 0x01)
+			if(pin7 == 0x80)
 			{
 				state = buttonPressed;
 			}
@@ -303,7 +303,7 @@ unsigned long int findGCD(unsigned long int a, unsigned long int b)
 
 int main(void) {
     /* Insert DDR and PORT initializations */
-	DDRB = 0xFF; PORTB = 0x00; //all but last pin is output, last pin is input (button inside house)
+	DDRB = 0x7F; PORTB = 0x80; //all but last pin is output, last pin is input (button inside house)
 	DDRA = 0x00; PORTA = 0xFF;
 	DDRC = 0xF0; PORTC = 0x0F;
     /* Insert your solution below */

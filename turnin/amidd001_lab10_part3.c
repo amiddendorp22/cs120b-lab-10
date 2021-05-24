@@ -8,6 +8,7 @@
  *	code, is my own original work.
  */
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #ifdef _SIMULATE_
 #include "simAVRHeader.h"
 #include "bit.h"
@@ -63,6 +64,8 @@ typedef struct _task
 unsigned char led0_output = 0x00;
 unsigned char led1_output = 0x00;
 unsigned char led2_output = 0x00;
+unsigned char led3_output = 0x00;
+
 enum display_States { display_display };
 
 int displaySMTick(int state)
@@ -82,7 +85,7 @@ int displaySMTick(int state)
 	switch(state)
 	{
 		case display_display:
-			output = led0_output | led1_output << 1 | led2_output << 2;
+			output = led0_output | led1_output << 1 | led2_output << 2| led3_output << 3;
 			break;
 	}
 
@@ -243,11 +246,11 @@ enum locking_mechanism { buttonPressed, buttonNotPressed};
 int lockingSMFct(int state)
 {
 
-	unsigned char pin7 = ~PINB & 0x80; //grabs PA0 (button inside house)
+	unsigned char pin7 = ~PINA & 0x01; //grabs PA0 (button inside house)
 	switch(state)
 	{
 		case(buttonPressed):
-			if(pin7 == 0x80)
+			if(pin7 == 0x01)
 			{
 				state = buttonPressed;
 			}
@@ -257,7 +260,7 @@ int lockingSMFct(int state)
 			}
 			break;
 		case(buttonNotPressed):
-			if(pin7 == 0x80)
+			if(pin7 == 0x01)
 			{
 				state = buttonPressed;
 			}
@@ -285,6 +288,175 @@ int lockingSMFct(int state)
 }
 
 
+
+void set_PWM(double frequency)
+{
+	static double current_frequency;
+	if(frequency != current_frequency)
+	{
+		if(!frequency)
+		{
+			TCCR3B &= 0x08;
+		}
+		else
+		{
+			TCCR3B |= 0x03;
+		}
+	
+		if(frequency < 0.954)
+		{
+			OCR3A = 0xFFFF;
+		}
+		else if(frequency > 31250)
+		{
+			OCR3A = 0x0000;
+		}
+		else
+		{
+			OCR3A = (short)(8000000 / (128 * frequency)) - 1;
+		}
+		TCNT3 = 0;
+		current_frequency = frequency;
+	}
+}
+
+void PWM_on()
+{
+	TCCR3A = (1 << COM3A0);
+	TCCR3B = (1 << WGM32) | (1 << CS31) | (1 << CS30);
+	set_PWM(0);
+}
+
+void PWM_off()
+{
+	TCCR3A = 0x00;
+	TCCR3B = 0x00;
+}
+
+enum Melody_States {Mel_Init, Mel_1, Mel_2, Mel_3, Mel_4, Mel_5, Mel_6, Mel_7, Mel_8, Mel_9, Mel_10, Mel_11, Mel_12, Mel_13, Mel_14, Mel_15};
+
+int TickFct_Melody(int state)
+{
+	unsigned char tmpA = ~PINA & 0x80;
+	switch(state)
+	{
+		case(Mel_Init):
+			if(tmpA == 0x80)
+			{
+				state = Mel_1;
+			}
+			else
+			{
+				state = Mel_Init;
+			}
+			break;
+		case(Mel_1):
+			state = Mel_2;
+			break;
+		case(Mel_2):
+                        state = Mel_3;
+                        break;
+		case(Mel_3):
+                        state = Mel_4;
+                        break;
+		case(Mel_4):
+                        state = Mel_5;
+                        break;
+		case(Mel_5):
+                        state = Mel_6;
+                        break;
+		case(Mel_6):
+                        state = Mel_7;
+                        break;
+		case(Mel_7):
+                        state = Mel_8;
+                        break;
+		case(Mel_8):
+                        state = Mel_9;
+                        break;
+		case(Mel_9):
+                        state = Mel_10;
+                        break;
+		case(Mel_10):
+                        state = Mel_11;
+                        break;
+		case(Mel_11):
+			state = Mel_12;
+			break;
+		case(Mel_12):
+			state = Mel_13;
+			break;
+		case(Mel_13):
+			state = Mel_14;
+			break;
+		case(Mel_14):
+			state = Mel_15;
+			break;
+		case(Mel_15):
+			state = Mel_Init;
+			break;
+		default:
+			state = Mel_Init;
+			break;
+	}
+
+	switch(state)
+	{
+		case(Mel_Init):
+			set_PWM(0);
+			break;
+		case(Mel_1):
+			led3_output = 0x01;
+			set_PWM(261.63);
+			break;
+		case(Mel_2):
+			set_PWM(349.23);
+			break;
+		case(Mel_3):
+			set_PWM(293.66);
+			break;
+		case(Mel_4):
+			set_PWM(329.63);
+			break;
+		case(Mel_5):
+			set_PWM(392.00);
+			break;
+		case(Mel_6):
+			set_PWM(523.25);
+			break;
+		case(Mel_7):
+			set_PWM(440.00);
+			break;
+		case(Mel_8):
+			set_PWM(493.88);
+			break;
+		case(Mel_9):
+			set_PWM(261.63);
+			break;
+		case(Mel_10):
+			set_PWM(523.25);
+			break;
+		case(Mel_11):
+			set_PWM(493.88);
+			break;
+		case(Mel_12):
+			set_PWM(349.23);
+			break;
+		case(Mel_13):
+			set_PWM(440.00);
+			break;
+		case(Mel_14):
+			set_PWM(329.63);
+			break;
+		case(Mel_15):
+			set_PWM(392.00);
+			break;
+	}
+
+	return state;
+}
+
+
 unsigned long int findGCD(unsigned long int a, unsigned long int b)
 {
 	unsigned long int c;
@@ -303,13 +475,13 @@ unsigned long int findGCD(unsigned long int a, unsigned long int b)
 
 int main(void) {
     /* Insert DDR and PORT initializations */
-	DDRB = 0x7F; PORTB = 0x80; //all but last pin is output, last pin is input (button inside house)
+	DDRB = 0xFF; PORTB = 0x00; //all but last pin is output, last pin is input (button inside house)
 	DDRA = 0x00; PORTA = 0xFF;
 	DDRC = 0xF0; PORTC = 0x0F;
     /* Insert your solution below */
 
-	static task task1, task2, task3;
-	task *tasks[] = {&task1, &task2, &task3};
+	static task task1, task2, task3, task4;
+	task *tasks[] = {&task1, &task2, &task3, &task4};
 	const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
 
 	const char start = -1;
@@ -325,9 +497,15 @@ int main(void) {
 	task2.TickFct = &lockingSMFct;
 
 	task3.state = start;
-	task3.period = 10;
+	task3.period = 200;
 	task3.elapsedTime = task3.period;
-	task3.TickFct = &displaySMTick;
+	task3.TickFct = &TickFct_Melody;
+
+
+	task4.state = start;
+	task4.period = 10;
+	task4.elapsedTime = task4.period;
+	task4.TickFct = &displaySMTick;
 
 	
 	unsigned long GCD = tasks[0]->period;
@@ -340,10 +518,11 @@ int main(void) {
 
 	TimerSet(GCD);
 	TimerOn();
+	PWM_on();
 //	PORTB = 0x01;
-//	unsigned char tmpA = ~PINA & 0x01;
     while (1)
     {
+	    
 	for(i = 0; i < numTasks; i++)
 	{
 		if(tasks[i]->elapsedTime == tasks[i]->period)
@@ -356,6 +535,7 @@ int main(void) {
 
 	while(!TimerFlag);
 	TimerFlag = 0;
+	
 }
 
 	return 0;
